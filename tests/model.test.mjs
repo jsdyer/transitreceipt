@@ -1,21 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanLines } from '../web/model.mjs';
-test('trims, removes blanks and preserves first-seen order', () => {
-  assert.deepEqual(cleanLines('  Halifax\nLangley\nHalifax\n\nVancouver  '), {
-    text: 'Halifax\nLangley\nVancouver', count: 3, removed: 1,
-  });
-});
-test('supports Windows and old Mac line endings', () => {
-  assert.equal(cleanLines('a\r\nb\ra').text, 'a\nb');
-});
-test('empty text and whitespace produce an empty result', () => {
-  assert.deepEqual(cleanLines(' \n\t'), { text: '', count: 0, removed: 0 });
-});
-test('preserves case and Unicode', () => {
-  assert.equal(cleanLines('Québec\nquébec\n東京\nQuébec').text, 'Québec\nquébec\n東京');
-});
-test('treats markup as ordinary text', () => {
-  assert.equal(cleanLines('<script>alert(1)</script>\n<script>alert(1)</script>').text, '<script>alert(1)</script>');
-});
-test('rejects non-text input', () => { assert.throws(() => cleanLines(null), TypeError); });
+import {matchRows,statistics,csv} from '../web/model.mjs';
+const receipt={entity:'x',captured_at:'2026-11-22T00:00:00Z',items:[{target:'2026-11-22T01:00:00Z',value:3}]};
+test('missing and suspect gauge observations never become zero errors',()=>{assert.equal(matchRows(receipt,{},'tide')[0].error,null);assert.equal(matchRows(receipt,{'x|2026-11-22T01:00:00Z':{value:2,quality:'3'}},'tide')[0].error,null);});
+test('exact station and timestamp matching with forecast-minus-observation sign',()=>{const rows=matchRows(receipt,{'x|2026-11-22T01:00:00Z':{value:2,quality:'1'},'y|2026-11-22T01:00:00Z':{value:100,quality:'1'}},'tide');assert.equal(rows[0].error,1);assert.equal(rows[0].lead,1);assert.equal(statistics(rows).mae,1);});
+test('transit requires later sightings and reports minutes after prediction',()=>{const r={entity:'bus',captured_at:'2026-11-22T00:00:00Z',items:[{target:'trip|date|stop',target_time:'2026-11-22T00:05:00Z',value:Date.parse('2026-11-22T00:05:00Z')/1000}]};assert.equal(matchRows(r,{'bus|trip|date|stop':{value:Date.parse('2026-11-21T23:59:00Z')/1000}},'transit')[0].error,null);assert.equal(matchRows(r,{'bus|trip|date|stop':{value:Date.parse('2026-11-22T00:07:00Z')/1000}},'transit')[0].error,2);});
+test('scores exclude unmatched points and keep signed bias distinct from MAE',()=>{assert.deepEqual(statistics([{error:2},{error:-4},{error:null}]),{count:2,total:3,mae:3,bias:-1});assert.equal(statistics([]).mae,null);});
+test('historical issues use source issue time, never a negative retrieval lead',()=>{const r={...receipt,issued_at:'2026-11-21T01:00:00Z',captured_at:'2026-11-23T00:00:00Z',provenance:'published_archive'};assert.equal(matchRows(r,{},'grid')[0].lead,24);});
+test('CSV escapes source labels and keeps missing observations empty',()=>{const value=csv([{target:'x',label:'a,"b"',value:3,observed:null}]);assert.match(value,/"a,""b"""/);assert.ok(!value.includes('undefined'));});

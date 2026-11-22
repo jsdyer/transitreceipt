@@ -1,78 +1,99 @@
-name: Browser tool · Check and publish
+name: Receipts · Collect, check and publish
 on:
   pull_request:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '13 * * * *'
 permissions:
   contents: read
+concurrency:
+  group: receipts-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    outputs:
-      publish: ${{ steps.identity.outputs.publish }}
+    timeout-minutes: 25
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - name: Test the application
-        run: node --test tests/*.test.mjs
-      - name: Test the builder
-        run: python3 -m unittest discover -s tests -v
-      - name: Build the static application
-        run: python3 scripts/build.py
-      - name: Check whether the tool has been initialized
-        id: identity
+      - name: Install GTFS decoder
+        run: python3 -m pip install -r requirements.txt
+      - name: Monitor collection start
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         env:
-          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          HC: ${{ secrets.HEALTHCHECKS_PING_URL }}
         run: |
-          python3 - <<'PY'
-          import json, os
-          tool_id = json.load(open('tool.json'))['id']
-          ready = tool_id != 'coolcode-tool-template' and tool_id == os.environ['REPOSITORY_NAME']
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write(f'publish={str(ready).lower()}\n')
-          PY
+          if [ -n "$HC" ]; then curl -fsS --retry 2 --max-time 15 "$HC/start" >/dev/null || true; fi
+      - name: Collect and preserve source receipts
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        env:
+          TRANSLINK_API_KEY: ${{ secrets.TRANSLINK_API_KEY }}
+        run: python3 scripts/collect.py --samples 10 --interval 60
+      - name: Test comparison logic
+        run: node --test tests/*.test.mjs
+      - name: Test source parsing and archive integrity
+        run: python3 -m unittest discover -s tests -v
+      - name: Build saved data offline
+        run: python3 scripts/build.py
       - name: Install browser test dependencies
         run: |
           python3 -m pip install -r tests/browser-requirements.txt
           python3 -m playwright install --with-deps chromium
-      - name: Check application in a browser
+      - name: Check desktop and mobile browser flows
         run: python3 tests/browser_smoke.py
-      - name: Save browser screenshots
+      - name: Save full-page browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: browser-checks
           path: browser-checks/
           retention-days: 7
-      - name: Save reviewable site
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-tool-preview
-          path: dist/
-          include-hidden-files: true
-          retention-days: 7
+      - name: Commit validated receipts
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add archive collection-status.json
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'data: retain new source receipts'
+            gh auth setup-git
+            git push origin HEAD:main
+          fi
+      - name: Monitor collection result
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        env:
+          HC: ${{ secrets.HEALTHCHECKS_PING_URL }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ -n "$HC" ]; then
+            suffix=''
+            if [ "$JOB_STATUS" != success ]; then suffix='/fail'; fi
+            curl -fsS --retry 2 --max-time 15 "$HC$suffix" >/dev/null || true
+          fi
       - name: Package Pages site
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.identity.outputs.publish == 'true'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.build.outputs.publish == 'true'
     needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    concurrency:
-      group: github-pages
-      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write

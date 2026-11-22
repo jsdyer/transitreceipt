@@ -1,9 +1,7 @@
-/dist/
+dist/
+browser-checks/
 __pycache__/
 *.pyc
-.venv/
-node_modules/
-.env
-.env.*
-!.env.example
-/browser-checks/
+.venv*/
+.cache/
+.openai/

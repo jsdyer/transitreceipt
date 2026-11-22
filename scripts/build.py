@@ -75,6 +75,8 @@ def build(root=ROOT):
             raise ValueError("Unresolved template placeholder in web/index.html")
         index.write_text(page, encoding="utf-8")
         (stage / ".nojekyll").touch()
+        from build_data import assemble
+        assemble(root, stage)
         if output.exists():
             shutil.rmtree(output)
         shutil.copytree(stage, output)

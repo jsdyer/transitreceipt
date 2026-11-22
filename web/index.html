@@ -1,34 +1,13 @@
 <!doctype html>
-<html lang="en-CA">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="{{DESCRIPTION}}">
-  <title>{{TITLE}} · CoolCode</title>
-  <link rel="stylesheet" href="./style.css">
-  <script type="module" src="./app.mjs"></script>
-  {{VISIT_COUNTER}}
-</head>
-<body data-tool-id="{{TOOL_ID}}">
-  <a class="skip" href="#main">Skip to content</a>
-  <header><a href="https://coolcode.ca/">← CoolCode.ca</a><a href="{{SOURCE_URL}}">Source &amp; instructions ↗</a></header>
-  <main id="main">
-    <p class="eyebrow">Browser tool starter</p>
-    <h1>{{TITLE}}</h1>
-    <p class="intro">{{DESCRIPTION}}</p>
-    <section aria-labelledby="example-title">
-      <h2 id="example-title">Clean a list</h2>
-      <p>Trim spaces, skip blank lines and remove exact duplicates. Capitalization stays distinct.</p>
-      <div class="panels">
-        <div><label for="input">Your lines</label><textarea id="input" rows="10" maxlength="100000" spellcheck="false" placeholder="Paste one item per line"></textarea></div>
-        <div><label for="output">Cleaned lines</label><textarea id="output" rows="10" readonly spellcheck="false"></textarea></div>
-      </div>
-      <div class="actions"><button id="sample" type="button">Load example</button><button id="clear" type="button">Clear</button><button id="copy" type="button" hidden>Copy result</button></div>
-      <p id="status" role="status" aria-live="polite">Paste a list to begin.</p>
-      <noscript><p>This tool needs JavaScript to process your text. The source is available above.</p></noscript>
-    </section>
-    <aside aria-label="Privacy"><strong>Stays on your device.</strong> The browser processes your text in this tab. Reloading clears it.</aside>
-  </main>
-  <footer>Part of <a href="https://coolcode.ca/">the CoolCode collection</a>. {{ISSUE_LINK}}</footer>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{TITLE}} · CoolCode</title><meta name="description" content="{{DESCRIPTION}}"><meta name="coolcode-tool" content="{{TOOL_ID}}"><link rel="stylesheet" href="./style.css">{{VISIT_COUNTER}}</head>
+<body><a class="skip" href="#explorer">Skip to receipts</a><header class="top"><a class="brand" href="https://coolcode.ca/">CoolCode<span>.ca</span></a><nav aria-label="Page"><a href="#method">Sources & method</a><a href="{{SOURCE_URL}}">Source code</a></nav></header>
+<main><section class="hero"><div><p class="eyebrow" id="eyebrow">THE RECEIPT COLLECTION</p><h1>{{TITLE}}</h1><p class="intro" id="intro">{{DESCRIPTION}}</p><div class="hero-notes"><span>Predictions kept on record</span><span>Source-linked evidence</span><span>History retained</span></div></div><aside class="ticket"><span class="ticket-label">ARCHIVE OPENED</span><strong id="archive-date">Loading…</strong><div class="ticket-line"></div><p id="archive-count">Reading saved receipts</p><a href="./data/archive.json" download>Download archive index</a></aside></section>
+<section class="status-strip" aria-live="polite"><p id="status">Loading saved source data…</p><p id="coverage"></p></section>
+<section id="explorer" class="explorer"><div class="section-head"><div><p class="eyebrow">FOLLOW THE EVIDENCE</p><h2>Prediction, then observation.</h2></div><button id="export" type="button">Download comparison CSV</button></div>
+<div class="filters"><label><span id="entity-label">Location</span><select id="entity"></select></label><label>Saved receipt<select id="receipt"></select></label><label>Show<select id="filter"><option value="all">All points</option><option value="matched">With observations</option><option value="pending">Awaiting observations</option></select></label></div>
+<div class="metrics"><article><span>Matched points</span><strong id="matched">—</strong><small id="matched-help">Saved predictions with later evidence</small></article><article><span id="mae-label">Mean absolute difference</span><strong id="mae">—</strong><small id="mae-help">Available after outcomes arrive</small></article><article><span id="bias-label">Mean signed difference</span><strong id="bias">—</strong><small id="bias-help"></small></article></div>
+<div class="plot-panel"><div class="plot-head"><h3 id="plot-title">Receipt detail</h3><div class="legend"><span class="pred-key">Prediction</span><span class="obs-key" id="obs-legend">Observation</span></div></div><div id="chart" role="img" aria-label="Predictions compared with observations"></div><p class="caption" id="chart-caption"></p></div>
+<div class="receipt-meta" id="receipt-meta"></div><p id="empty" class="notice" hidden></p><div class="table-wrap"><table><caption id="table-caption">Saved values and their observed outcomes</caption><thead><tr><th id="target-heading">Target time (UTC)</th><th>Predicted</th><th id="observed-heading">Observed</th><th id="difference-heading">Difference</th><th>Lead</th><th>Evidence</th></tr></thead><tbody id="rows"></tbody></table></div><p id="table-note" class="caption"></p></section>
+<section id="method" class="method"><div><p class="eyebrow">READ THE RECEIPT</p><h2>What the comparison means.</h2><div id="explanation"></div></div><aside><h3>Sources & collection</h3><ul id="sources"></ul><p id="cadence"></p><p>Data is collected by the repository workflow. This page reads saved public data; filters stay in your browser. CoolCode records aggregate page opens, without filter values.</p><a href="./data/index.json" download>Download dashboard data</a></aside></section>
+<section class="related"><h2>More receipts</h2><a href="https://coolcode.ca/transitreceipt/">Transit Receipt</a><a href="https://coolcode.ca/tidereceipt/">Tide Receipt</a><a href="https://coolcode.ca/gridreceipt/">Grid Receipt</a><a href="https://coolcode.ca/forecastreceipt/">Forecast Receipt</a><a href="https://coolcode.ca/releasereceipt/">Release Receipt</a></section>
+</main><footer><span>An independent CoolCode project.</span>{{ISSUE_LINK}}<a href="{{SOURCE_URL}}">Repository & setup</a></footer><script type="module" src="./app.mjs"></script></body></html>

@@ -1,0 +1,19 @@
+{
+  "halifax": {
+    "name": "Halifax",
+    "timezone": "America/Halifax",
+    "static": "https://gtfs.halifax.ca/static/google_transit.zip",
+    "trips": "https://gtfs.halifax.ca/realtime/TripUpdate/TripUpdates.pb",
+    "vehicles": "https://gtfs.halifax.ca/realtime/Vehicle/VehiclePositions.pb",
+    "stop_ids": ["6106", "6107", "8333", "8334", "8435", "7285", "7601"]
+  },
+  "translink": {
+    "name": "TransLink · Carvolth",
+    "timezone": "America/Vancouver",
+    "static": "https://gtfs-static.translink.ca/gtfs/google_transit.zip",
+    "trips": "https://gtfsapi.translink.ca/v3/gtfsrealtime",
+    "vehicles": "https://gtfsapi.translink.ca/v3/gtfsposition",
+    "key_env": "TRANSLINK_API_KEY",
+    "stop_name_contains": ["carvolth exchange"]
+  }
+}

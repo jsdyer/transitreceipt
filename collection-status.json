@@ -1,0 +1,13 @@
+{
+  "checked_at": "2026-11-22T13:00:52Z",
+  "providers": [
+    {
+      "name": "TransLink \u00b7 Carvolth",
+      "status": "awaiting API key"
+    },
+    {
+      "name": "Halifax",
+      "status": "collected"
+    }
+  ]
+}
