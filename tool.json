@@ -17,6 +17,7 @@
   "access": "browser",
   "data_info": {
     "mode": "snapshot",
-    "detail": "Saved Halifax bus arrival estimates are compared with later vehicle sightings; TransLink collection is optional."
+    "detail": "Saved Halifax bus arrival estimates are compared with later vehicle sightings; TransLink collection is optional.",
+    "cadence": "Hourly"
   }
 }
