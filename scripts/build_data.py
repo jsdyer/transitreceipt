@@ -29,3 +29,4 @@ def assemble(root,output):
     (output/'data/index.json').write_text(json.dumps(data,ensure_ascii=False,separators=(',',':'))+'\n')
     (output/'data/archive.json').write_text(json.dumps(manifest,ensure_ascii=False,separators=(',',':'))+'\n')
     shutil.copytree(root/'archive',output/'archive')
+    return data

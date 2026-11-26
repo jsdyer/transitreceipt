@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build a browser tool using Python's standard library; no network required."""
+from datetime import datetime
 from html import escape
 import json
 from pathlib import Path
@@ -7,6 +8,7 @@ import re
 import shutil
 import tempfile
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
@@ -38,6 +40,54 @@ def metadata(root=ROOT):
     if source.scheme != "https" or not source.hostname or source.username is not None or any(c.isspace() for c in tool["source"]) or "\\" in tool["source"]:
         raise ValueError("source must be an HTTPS URL without credentials or whitespace")
     return tool
+
+
+def stop_example(data, agencies):
+    fallback = None
+    for receipt in data["receipts"]:
+        captured = datetime.fromisoformat(receipt["captured_at"].replace("Z", "+00:00"))
+        for point in receipt["items"]:
+            if fallback is None:
+                fallback = (receipt, point, None)
+            observed = data["observations"].get(receipt["entity"] + "|" + point["target"])
+            if observed and observed["value"] > captured.timestamp():
+                return example_markup(receipt, point, observed, agencies)
+    if fallback:
+        return example_markup(*fallback, agencies)
+    return '<p>No stop predictions were retained during this collection window.</p><a href="#method">Read the collection coverage</a>'
+
+
+def example_markup(receipt, point, observed, agencies):
+    agency = agencies.get(receipt["entity"].split(":", 1)[0], {})
+    zone = ZoneInfo(agency.get("timezone", "UTC"))
+    predicted = datetime.fromtimestamp(point["value"], zone)
+    day = predicted.strftime("%b %d, %Y").replace(" 0", " ")
+    route = point.get("route")
+    subject = " for Route " + str(route) if route else ""
+    text = f'The saved arrival estimate{subject} was {predicted:%H:%M:%S %Z}.'
+    if observed:
+        sighting = datetime.fromtimestamp(observed["value"], zone)
+        stamp = sighting.strftime("%H:%M:%S %Z")
+        if predicted.date() != sighting.date():
+            stamp += sighting.strftime(" on %b %d, %Y")
+        seconds = int(observed["value"] - point["value"])
+        minutes, remainder = divmod(abs(seconds), 60)
+        duration = " ".join(part for part in (f"{minutes} min" if minutes else "", f"{remainder} sec" if remainder else "") if part)
+        difference = f'{duration} {"later" if seconds > 0 else "earlier"} than predicted' if seconds else "the predicted time"
+        text += f' The first retained vehicle sighting was at {stamp}, {difference}.'
+    else:
+        text += " No matching sighting is available in this snapshot."
+    source = f'<a href="./{escape(receipt["file"], quote=True)}">Saved prediction</a>'
+    if observed:
+        source += f' · <a href="./{escape(observed["file"], quote=True)}">Vehicle sighting</a>'
+    action = "Inspect this stop comparison" if observed else "Inspect this saved prediction"
+    return (
+        f'<span class="ticket-label">SAVED STOP EXAMPLE · {day}</span>'
+        f'<h2>{escape(receipt["label"])}</h2><p>{escape(text)}</p>'
+        f'<a id="open-example" href="#example-evidence" data-receipt="{escape(receipt["id"], quote=True)}" '
+        f'data-target="{escape(point["target"], quote=True)}">{action} ↓</a>'
+        f'<details><summary>Source receipts</summary><p id="example-evidence">{source}</p></details>'
+    )
 
 
 def build(root=ROOT):
@@ -73,10 +123,12 @@ def build(root=ROOT):
             page = page.replace(placeholder, markup if on_coolcode else "")
         if re.search(r"\{\{[A-Z_]+\}\}", page):
             raise ValueError("Unresolved template placeholder in web/index.html")
+        from build_data import assemble
+        data = assemble(root, stage)
+        agencies = json.loads((root / "config.json").read_text(encoding="utf-8"))
+        page = page.replace("<!-- stop-example -->", stop_example(data, agencies))
         index.write_text(page, encoding="utf-8")
         (stage / ".nojekyll").touch()
-        from build_data import assemble
-        assemble(root, stage)
         if output.exists():
             shutil.rmtree(output)
         shutil.copytree(stage, output)

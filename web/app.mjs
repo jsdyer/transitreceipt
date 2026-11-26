@@ -14,7 +14,7 @@ for(const source of config.sources){const a=el('a',source.label);a.href=source.u
 function link(label,href){const a=el('a',label);a.href=href;return a;}
 function options(node,values){node.replaceChildren();for(const [value,label] of values){const o=el('option',label);o.value=value;node.append(o);}}
 function receipts(){return data.receipts.filter(r=>r.entity===$('entity').value);}
-function setReceipts(){const available=receipts();options($('receipt'),available.map(r=>[r.id,`${r.items[0]?.target_time?.slice(0,10)||r.items[0]?.target?.slice(0,10)} · ${r.provenance==='published_archive'?'issued':'saved'} ${when(r.provenance==='published_archive'?r.issued_at:r.captured_at)} · ${r.items.length} points${r.provenance==='published_archive'?' · archived issue':''}`]));const matched=available.find(r=>matchRows(r,data.observations,config.kind).some(p=>p.observed!==null));if(matched)$('receipt').value=matched.id;render();}
+function setReceipts(preferred){const available=receipts();options($('receipt'),available.map(r=>[r.id,`${r.items[0]?.target_time?.slice(0,10)||r.items[0]?.target?.slice(0,10)} · ${r.provenance==='published_archive'?'issued':'saved'} ${when(r.provenance==='published_archive'?r.issued_at:r.captured_at)} · ${r.items.length} points${r.provenance==='published_archive'?' · archived issue':''}`]));const matched=available.find(r=>matchRows(r,data.observations,config.kind).some(p=>p.observed!==null));if(available.some(r=>r.id===preferred))$('receipt').value=preferred;else if(matched)$('receipt').value=matched.id;render();}
 function chart(rows){
   const holder=$('chart');holder.replaceChildren();
   if(!rows.length){holder.append(el('p','No points match this view.'));return;}
@@ -40,11 +40,12 @@ function render(){
   $('export').disabled=!activeRows.length;
   $('receipt-meta').replaceChildren();
   if(receipt){$('receipt-meta').append(el('span',`Captured ${when(receipt.captured_at)}`),link('Saved receipt (.json.gz)','./'+receipt.file),link('Source',receipt.source_url));if(receipt.issued_at)$('receipt-meta').append(el('span',`Issued ${when(receipt.issued_at)}`));if(receipt.provenance==='published_archive')$('receipt-meta').append(el('strong','Published archive: retrieved after issue, not captured live.'));}
+  text('plot-title',receipt ? receipt.label + ' · ' + when(receipt.captured_at) : 'Saved predictions and sightings');
   chart(activeRows);
   text('chart-caption',config.chartCaption);
   $('rows').replaceChildren();
   for(const r of activeRows.slice(0,150)){
-    const tr=el('tr');const target=el('td',when(r.target_time||r.target));if(r.label)target.append(el('small',r.label));tr.append(target);
+    const tr=el('tr');tr.dataset.target=r.target;const target=el('td',when(r.target_time||r.target));if(r.label)target.append(el('small',r.label));tr.append(target);
     tr.append(el('td',valueLabel(r.value,config.kind)),el('td',valueLabel(r.observed,config.kind),r.observed===null?'pending':''));
     tr.append(el('td',r.error===null?'—':`${r.error>0?'+':''}${fmt(r.error)} ${config.unit}`,r.error===null?'pending':r.error>=0?'positive':'negative'));
     tr.append(el('td',config.kind==='transit'?`${fmt(r.lead*60,1)} min`:`${fmt(r.lead,1)} h`));const evidence=el('td');if(r.evidence)evidence.append(link(config.kind==='transit'?r.evidence.method||'Vehicle sighting':'Source receipt','./'+r.evidence.file));else evidence.textContent='Pending';tr.append(evidence);$('rows').append(tr);
@@ -52,7 +53,7 @@ function render(){
   $('empty').hidden=Boolean(activeRows.length);text('empty',all.length?'No points match this filter. Try All points.':'No future predictions were available at this location during the saved collection window.');
   text('table-note',`Showing ${Math.min(activeRows.length,150)} of ${activeRows.length} points. CSV includes every point in this view. Times are UTC. ${config.tableNote}`);
 }
-$('entity').addEventListener('change',setReceipts);$('receipt').addEventListener('change',render);$('filter').addEventListener('change',render);
+$('entity').addEventListener('change',()=>setReceipts());$('receipt').addEventListener('change',render);$('filter').addEventListener('change',render);
 $('export').addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([csv(activeRows,config.kind)],{type:'text/csv;charset=utf-8'}));const a=link('Download',url);a.download=config.id+'-comparison.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 try{
  const response=await fetch('./data/index.json');if(!response.ok)throw new Error('Data unavailable');data=await response.json();
@@ -60,5 +61,26 @@ try{
  text('status',`Latest collection: ${when(data.collection.checked_at)}`);
  text('coverage',data.collection.providers.map(p=>`${p.name}: ${p.status}`).join(' · '));
  const age=(Date.now()-Date.parse(data.collection.checked_at))/3600000;if(age>config.staleHours)text('status',`Collection is overdue. Last checked ${when(data.collection.checked_at)}. Showing saved data.`);
- options($('entity'),groupReceipts(data.receipts));setReceipts();
+ options($('entity'),groupReceipts(data.receipts));
+ const example = $('open-example');
+ const featured = data.receipts.find(receipt => receipt.id === example?.dataset.receipt);
+ if (featured) {
+   $('entity').value = featured.entity;
+   setReceipts(featured.id);
+   example.addEventListener('click', event => {
+     event.preventDefault();
+     $('entity').value = featured.entity;
+     const target = example.dataset.target;
+     const point = matchRows(featured, data.observations, config.kind).find(row => row.target === target);
+     $('filter').value = point?.observed != null ? 'matched' : 'all';
+     setReceipts(featured.id);
+     const row = [...$('rows').rows].find(row => row.dataset.target === target);
+     const focus = row || $('plot-title');
+     focus.tabIndex = -1;
+     focus.focus({preventScroll: true});
+     focus.scrollIntoView({block: 'center', behavior: 'instant'});
+   });
+ } else {
+   setReceipts();
+ }
 }catch(error){text('status','The saved data could not be loaded. Reload the page or use the repository archive.');$('export').disabled=true;console.error(error);}

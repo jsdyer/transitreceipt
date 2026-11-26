@@ -5,8 +5,7 @@ export default {
   "tint": "#e8ecfb",
   "staleHours": 4,
   "text": {
-    "eyebrow": "ARRIVAL ESTIMATES / HALIFAX + TRANSLINK",
-    "intro": "“Seven minutes away” deserves a receipt. Keep the arrival estimate, then look for a later vehicle sighting at the same stop.",
+    "eyebrow": "ARCHIVED BUS PREDICTIONS",
     "entity-label": "Agency / stop",
     "bias-help": "Positive = sighting later than the estimate",
     "mae-label": "Mean absolute sighting difference",

@@ -4,6 +4,8 @@ Save bus arrival estimates and compare them with later, explicitly labelled vehi
 
 Open https://coolcode.ca/transitreceipt/.
 
+Each build opens with a dated stop example from the recent dashboard. When a saved prediction has a later vehicle sighting, the page links both archive receipts and opens the matching visit in the comparison table. The example uses the agency’s local time zone. The full table uses UTC.
+
 <!-- coolcode:guide -->
 Start with a Halifax stop, then choose a saved prediction receipt. A positive difference means the first retained vehicle sighting was later than the estimate. A missing sighting stays unmatched; it never becomes an on-time arrival.
 <!-- /coolcode:guide -->

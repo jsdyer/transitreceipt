@@ -24,6 +24,13 @@ def main():
                 if entities>1:page.select_option('#entity',index=1);assert page.locator('#rows tr').count()>0
                 page.screenshot(path=str(shots/'desktop.png'),full_page=True)
                 page.set_viewport_size({'width':390,'height':844});assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth');page.screenshot(path=str(shots/'mobile.png'),full_page=True)
+                page.goto(f'http://127.0.0.1:{server.server_port}/{slug}/')
+                example=page.locator('#open-example')
+                assert example.bounding_box()['y'] < 844
+                page.locator('#receipt option').first.wait_for(state='attached')
+                example.click()
+                assert page.locator('#receipt').input_value() == example.get_attribute('data-receipt')
+                assert page.evaluate("document.activeElement.dataset.target") == example.get_attribute('data-target')
                 assert not errors,errors;browser.close()
         finally:server.shutdown()
 if __name__=='__main__':main()
